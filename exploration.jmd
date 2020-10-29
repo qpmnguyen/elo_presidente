@@ -20,7 +20,7 @@ result = stack(result, [:biden_prob, :trump_prob])
 First, let's plot the win probability (based on elo) for both candidates of a state across all weeks of polling for a swing state such as Pensylvania   
 
 ```julia
-state = result |> @filter(_.state == "TX") |> DataFrame
+state = result |> @filter(_.state == "PA") |> DataFrame
 p = Gadfly.plot(state, x = :poll_week, y = :value, color = :variable, Geom.line, Geom.point)
 display(p)
 ```
