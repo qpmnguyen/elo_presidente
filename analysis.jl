@@ -24,6 +24,8 @@ begin
 	Pkg.add("Statistics")
 	Pkg.add("JSON")
 	Pkg.add("StatsFuns")
+	Pkg.add("Plots")
+	Pkg.add("PlutoUI")
 	using DataFrames
 	using Distributions 
 	using Query
