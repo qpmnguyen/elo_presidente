@@ -1,4 +1,6 @@
 using StatsFuns
+using Statistics
+using Distributions
 
 @doc raw"""
 win_prob is a function to create win probabilities given an elo ranking   
@@ -49,3 +51,48 @@ function back_transformation(prob::Float64)
     logit(prob) * 400 * (1/log(10))
 end
 
+# get elo sequence given poll data, K, state abbreviation and prior 
+function get_elo(prior::DataFrame, polls::DataFrame, K::Int, abbv::Dict)
+    states = unique(polls.state)
+    result = DataFrame()
+    for i=1:length(states)
+        println(i)
+        entry = polls |> @filter(_.state == states[i]) |> DataFrame
+        pos_dates = unique(entry.dateweek)
+        outcome = DataFrame(win = Int16[], mov = Float64[])
+        for j=1:length(pos_dates)
+            week_df = entry |> @filter(_.dateweek == pos_dates[j]) |> DataFrame
+            max = maximum(week_df.pct_estimate_mean)
+            mov =  abs(week_df.pct_estimate_mean[1] - week_df.pct_estimate_mean[2])/100
+            idx = findall(x -> x == max, week_df.pct_estimate_mean)
+            if (mov == 0)
+                push!(outcome, [rand(Binomial(1,0.5)) rand(Uniform(0,0.01))])
+            else
+                push!(outcome, [ifelse(week_df.candidate_name[idx][1] == "Joseph R. Biden Jr.",1,0) mov])
+            end
+        end
+        insertcols!(outcome,1, :poll_week => pos_dates)
+        
+        if states[i] in values(abbv)
+            state_abb = [k for (k,v) in abbv if v == states[i]][1]
+            insertcols!(outcome, 1, :state => vec(fill(state_abb, (1,length(outcome.win)))))
+            init = Int.(round.(tuple(convert(Array, prior[prior.state .== state_abb,2:3] .+ 1000)...)))
+            seq = elo_sequence(outcome.win, outcome.mov, init, K)
+            insertcols!(outcome, 4, :biden_elo => seq[2:size(seq,1),1])
+            insertcols!(outcome, 4, :trump_elo => seq[2:size(seq,1),2])
+            result = vcat(result, outcome)
+        end
+    end
+    return(result)
+end
+
+# Simulating draws based on elo data set 
+function simulation(result::DataFrame, nsim::Int, electoral_vote::Dict)
+    output = DataFrame()
+    probs = result.value
+    for i=1:length(probs)
+        outcome = rand(Bernoulli(probs[i]),nsim) .* electoral_vote[result.state[i]]
+        insertcols!(output,1, Symbol(result.state[i]) => outcome, makeunique=true)
+    end
+    return(output)
+end
