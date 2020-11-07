@@ -26,6 +26,8 @@ begin
 	Pkg.add("StatsFuns")
 	Pkg.add("Plots")
 	Pkg.add("PlutoUI")
+	Pkg.add("HTTP")
+	using HTTP
 	using DataFrames
 	using Distributions 
 	using Query
@@ -159,14 +161,14 @@ md" First we can adjust the basic K-factor"
 
 # ╔═╡ be2225b0-2055-11eb-1c54-f1948ccc1fde
 begin
-	prior = CSV.File("prior.csv") |> DataFrame
-	polls = CSV.File("polls_processed.csv") |> DataFrame
-	abbv = JSON.parsefile("states.json")
-	electoral_votes = JSON.parsefile("electoral_votes.json")
+	prior = CSV.File(HTTP.get("https://raw.githubusercontent.com/qpmnguyen/elo_presidente/master/prior.csv").body) |> DataFrame
+	polls = CSV.File(HTTP.get("https://raw.githubusercontent.com/qpmnguyen/elo_presidente/master/polls_processed.csv").body) |> DataFrame
+	electoral_votes = JSON.parse(String(HTTP.get("https://raw.githubusercontent.com/qpmnguyen/elo_presidente/master/electoral_votes.json").body))
+	abbv = JSON.parse(String(HTTP.get("https://raw.githubusercontent.com/qpmnguyen/elo_presidente/master/states.json").body))
 	result = get_elo(prior, polls, k, abbv)
 	result =  result |> @mutate(biden_prob = win_prob(_.biden_elo, _.trump_elo)[1]) |> 
 	    @mutate(trump_prob = win_prob(_.biden_elo, _.trump_elo)[2]) |> DataFrame
-	result = stack(result, [:biden_prob, :trump_prob])
+	result = DataFrames.stack(result, [:biden_prob, :trump_prob])
 	head(result)
 end
 
@@ -245,7 +247,7 @@ perc_win = (sum(sim.win)/size(sim)[1])*100
 # ╟─845465d0-209d-11eb-300e-355ff98531aa
 # ╟─0524d4b0-20a3-11eb-19f0-3bc4ca93563f
 # ╟─f1743320-2057-11eb-2d30-a92fc68ad63c
-# ╟─be2225b0-2055-11eb-1c54-f1948ccc1fde
+# ╠═be2225b0-2055-11eb-1c54-f1948ccc1fde
 # ╟─29114d90-20a3-11eb-12e7-492a5eb6d24c
 # ╟─ae0e88f0-2076-11eb-364d-e74cbe6b264b
 # ╟─ff3d67b0-2057-11eb-1d89-ed847d1d3ebe
